@@ -3,11 +3,17 @@ use std::sync::Arc;
 
 // SunVox FFI bindings
 mod sunvox_ffi;
+use sunvox_ffi::*;
 
-/// A minimal CLAP plugin that passes audio through unchanged.
-/// This serves as the foundation for integrating SunVox in Phase 2.
+/// A CLAP plugin integrating SunVox modular synthesizer.
+/// Phase 2: Now initializes SunVox for audio generation.
 struct SunVoxPlugin {
     params: Arc<SunVoxPluginParams>,
+
+    // SunVox state (Phase 2)
+    sunvox_initialized: bool,
+    sunvox_slot: i32,
+    sample_rate: f32,
 }
 
 #[derive(Params)]
@@ -17,6 +23,9 @@ impl Default for SunVoxPlugin {
     fn default() -> Self {
         Self {
             params: Arc::new(SunVoxPluginParams {}),
+            sunvox_initialized: false,
+            sunvox_slot: 0,
+            sample_rate: 44100.0,
         }
     }
 }
@@ -51,14 +60,81 @@ impl Plugin for SunVoxPlugin {
         self.params.clone()
     }
 
+    fn initialize(
+        &mut self,
+        _audio_io_layout: &AudioIOLayout,
+        buffer_config: &BufferConfig,
+        _context: &mut impl InitContext<Self>,
+    ) -> bool {
+        // Store the sample rate from the host
+        self.sample_rate = buffer_config.sample_rate;
+
+        // Initialize SunVox in offline mode with float32 audio
+        unsafe {
+            let flags = SV_INIT_FLAG_NO_DEBUG_OUTPUT
+                | SV_INIT_FLAG_OFFLINE
+                | SV_INIT_FLAG_AUDIO_FLOAT32
+                | SV_INIT_FLAG_ONE_THREAD;
+
+            let result = sv_init(
+                std::ptr::null(),
+                buffer_config.sample_rate as i32,
+                2, // stereo
+                flags,
+            );
+
+            if result != 0 {
+                nih_log!("⚠ SunVox initialization failed with code: {} (0x{:x})", result, result);
+                nih_log!("⚠ This may be expected in some environments");
+                nih_log!("⚠ Plugin will continue but audio generation will be disabled");
+                self.sunvox_initialized = false;
+                return true; // Still return true so plugin loads
+            }
+
+            nih_log!("✓ SunVox initialized successfully at {} Hz", buffer_config.sample_rate);
+
+            // Open slot 0 for playback
+            let result = sv_open_slot(self.sunvox_slot);
+            if result != 0 {
+                nih_log!("⚠ Failed to open SunVox slot: {}", result);
+                sv_deinit();
+                self.sunvox_initialized = false;
+                return true; // Still return true so plugin loads
+            }
+
+            nih_log!("✓ SunVox slot {} opened", self.sunvox_slot);
+
+            self.sunvox_initialized = true;
+        }
+
+        true
+    }
+
+    fn deactivate(&mut self) {
+        // Clean up SunVox when plugin is deactivated
+        if self.sunvox_initialized {
+            unsafe {
+                nih_log!("Cleaning up SunVox...");
+                sv_close_slot(self.sunvox_slot);
+                sv_deinit();
+                nih_log!("✓ SunVox cleaned up");
+            }
+            self.sunvox_initialized = false;
+        }
+    }
+
     fn process(
         &mut self,
         _buffer: &mut Buffer,
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        // For now, just pass audio through unchanged
-        // In Phase 2, we'll integrate SunVox audio generation here
+        // Phase 2.3 complete: SunVox is now initialized
+        // Phase 2.4 next: Call sv_audio_callback() here to generate audio
+
+        // For now, still just passing audio through
+        // Step 2.4 will add: sv_audio_callback(buffer, frames, latency, time)
+
         ProcessStatus::Normal
     }
 }
