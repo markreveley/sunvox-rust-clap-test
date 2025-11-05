@@ -31,6 +31,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Update install names to use @loader_path (relative to plugin binary)
     install_name_tool -change "sunvox.dylib" "@loader_path/sunvox.dylib" "$BUNDLE_DIR/Contents/MacOS/sunvox_clap"
 
+    # Remove quarantine attributes from bundled library (macOS security)
+    xattr -d com.apple.quarantine "$BUNDLE_DIR/Contents/MacOS/sunvox.dylib" 2>/dev/null || true
+
     # Create Info.plist
     cat > "$BUNDLE_DIR/Contents/Info.plist" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
