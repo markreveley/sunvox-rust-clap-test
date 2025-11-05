@@ -1,0 +1,21 @@
+[package]
+name = "sunvox_clap"
+version = "0.1.0"
+edition = "2021"
+authors = ["SunVox CLAP Plugin"]
+description = "A CLAP audio plugin integrating SunVox synthesizer"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = "none"
