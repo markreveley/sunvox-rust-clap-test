@@ -19,6 +19,18 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Copy the dylib with the correct name
     cp target/release/libsunvox_clap.dylib "$BUNDLE_DIR/Contents/MacOS/sunvox_clap"
 
+    # Bundle SunVox library with the plugin
+    ARCH=$(uname -m)
+    if [[ "$ARCH" == "arm64" ]]; then
+        SUNVOX_LIB="sunvox_lib/sunvox_lib/macos/lib_arm64/sunvox.dylib"
+    else
+        SUNVOX_LIB="sunvox_lib/sunvox_lib/macos/lib_x86_64/sunvox.dylib"
+    fi
+    cp "$SUNVOX_LIB" "$BUNDLE_DIR/Contents/MacOS/sunvox.dylib"
+
+    # Update install names to use @loader_path (relative to plugin binary)
+    install_name_tool -change "sunvox.dylib" "@loader_path/sunvox.dylib" "$BUNDLE_DIR/Contents/MacOS/sunvox_clap"
+
     # Create Info.plist
     cat > "$BUNDLE_DIR/Contents/Info.plist" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
