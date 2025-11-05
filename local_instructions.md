@@ -139,6 +139,43 @@ sudo cp -r target/release/sunvox_clap.clap /usr/lib/clap/
 3. **Bundle**: `./bundle.sh` or manually copy to `.clap/` directory
 4. **Test**: Restart DAW (or rescan) and test changes
 
+### Before Committing - CRITICAL Testing Requirements
+
+**ALWAYS run these tests before committing code:**
+
+1. **Unit Tests**:
+   ```bash
+   cargo test --lib -- --nocapture
+   ```
+
+2. **Build Verification**:
+   ```bash
+   cargo build --release  # Must succeed
+   cargo clippy           # Check warnings
+   ./bundle.sh            # Verify bundle creation
+   ```
+
+3. **E2E Tests** (end-to-end):
+   - Install plugin to DAW plugin directory
+   - Load plugin in Bitwig/Reaper
+   - Verify plugin appears and loads without errors
+   - Test core functionality works
+
+4. **User Tests** (manual validation):
+   - Create multiple plugin instances
+   - Test load/unload cycles
+   - Check for crashes or glitches
+   - Monitor CPU usage
+   - Verify parameter changes work (when applicable)
+
+**Pre-Commit Checklist:**
+- [ ] `cargo test` passes
+- [ ] `cargo build --release` succeeds
+- [ ] `cargo clippy` has no warnings
+- [ ] Plugin loads in DAW
+- [ ] Core functionality verified
+- [ ] No crashes or memory leaks
+
 ### Fast Iteration
 ```bash
 # Watch for changes and auto-rebuild (install cargo-watch first)
@@ -319,20 +356,31 @@ When working on this project with Claude or similar:
 
 1. **Current Status**: Phase 2 Steps 2.1 & 2.2 complete (FFI bindings + linking)
 2. **Next Task**: Step 2.3 - Initialize SunVox in plugin structure
-3. **Always build before testing**: Run `./bundle.sh` after code changes
-4. **Refer to plan.md**: It has the complete roadmap with checklists
-5. **SunVox library is bundled**: No need to download, it's in `sunvox_lib/`
-6. **Target platform**: Currently Linux x86_64, but multiplatform possible
-7. **Threading model**: Use `SV_INIT_FLAG_ONE_THREAD` for simplicity
-8. **Audio format**: float32 stereo at host sample rate
-9. **FFI bindings ready**: `src/sunvox_ffi.rs` has all necessary functions
+3. **CRITICAL - Test before committing**: ALWAYS run unit tests, build tests, E2E tests, and user tests before committing (see "Before Committing" section above)
+4. **Always build before testing**: Run `./bundle.sh` after code changes
+5. **Refer to plan.md**: It has the complete roadmap with checklists
+6. **SunVox library is bundled**: No need to download, it's in `sunvox_lib/`
+7. **Target platform**: macOS (arm64), Linux (x86_64), Windows (x86_64)
+8. **Threading model**: Use `SV_INIT_FLAG_ONE_THREAD` for simplicity
+9. **Audio format**: float32 stereo at host sample rate
+10. **FFI bindings ready**: `src/sunvox_ffi.rs` has all necessary functions
+
+### Testing Requirements for AI
+**Before any commit or claiming work complete:**
+- Run `cargo test --lib -- --nocapture` - Unit tests must pass
+- Run `cargo build --release` - Build must succeed
+- Run `cargo clippy` - No warnings allowed
+- Run `./bundle.sh` - Bundle creation must work
+- Load plugin in DAW - Must load without errors
+- Test functionality - Core features must work
+- Report test results in completion message
 
 ### Common Tasks for AI
-- "Implement Phase 2 step 2.3" - Next: Initialize SunVox in plugin
+- "Implement Phase 2 step 2.3" - Next: Initialize SunVox in plugin (REMEMBER TO TEST)
 - "Run tests" - `cargo test --lib -- --nocapture`
-- "Add a gain parameter" - Practice with nih-plug parameters
+- "Add a gain parameter" - Practice with nih-plug parameters (TEST BEFORE COMMITTING)
 - "Debug why plugin crashes on load" - Troubleshooting
-- "Add MIDI support" - Future enhancement (after Phase 2)
+- "Add MIDI support" - Future enhancement (after Phase 2, TEST THOROUGHLY)
 
 ## License Notes
 

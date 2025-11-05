@@ -155,16 +155,54 @@ Example: Add a gain control
 - Document public APIs and unsafe code
 
 ### Testing
-- Test in DAW after changes
-- Check multiple instances work
-- Verify load/unload doesn't crash
-- Monitor CPU usage
+
+**CRITICAL: Always run tests before committing!**
+
+Run all applicable tests before committing changes:
+
+1. **Unit Tests** (when available):
+   ```bash
+   cargo test
+   ```
+
+2. **Build Tests**:
+   ```bash
+   cargo build --release  # Must succeed
+   cargo clippy           # Check for lints/warnings
+   ./bundle.sh            # Verify bundle creation works
+   ```
+
+3. **E2E Tests** (end-to-end):
+   - Install plugin to test location
+   - Load in DAW (Bitwig/Reaper)
+   - Verify plugin appears in browser
+   - Check plugin loads without errors
+   - Test audio processing works correctly
+
+4. **User Tests** (manual validation):
+   - Create multiple plugin instances
+   - Verify load/unload doesn't crash
+   - Monitor CPU usage
+   - Check for audio glitches or artifacts
+   - Test parameter changes (when applicable)
+   - Verify plugin survives project save/reload
+
+**Testing Checklist Before Commit:**
+- [ ] `cargo test` passes (or N/A if no tests yet)
+- [ ] `cargo build --release` succeeds
+- [ ] `cargo clippy` shows no warnings
+- [ ] `./bundle.sh` creates valid bundle
+- [ ] Plugin loads in DAW without errors
+- [ ] Core functionality works as expected
+- [ ] No crashes or memory leaks observed
 
 ### Git Workflow
 - Develop on branch: `claude/sunvox-d-investigation-011CUqJ5F3Ku7UyyrhQdrkzd`
+- **Run all applicable tests before committing** (see Testing section above)
 - Commit logical units of work
 - Write descriptive commit messages
 - Push when phase or feature complete
+- Never commit broken or untested code
 
 ## Resources
 
@@ -304,9 +342,10 @@ When working with the user:
 - **Ask for clarification** on ambiguous requirements
 - **Show progress** on multi-step tasks
 - **Explain decisions** when choosing between options
-- **Test thoroughly** before marking complete
+- **Test thoroughly before marking complete** - ALWAYS run unit tests, e2e tests, and user tests before committing or claiming work is done
 - **Provide examples** of how to test changes
 - **Document** any assumptions or trade-offs made
+- **Report test results** - Include what tests were run and their outcomes in completion messages
 
 ## Success Metrics
 
