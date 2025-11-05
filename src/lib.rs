@@ -1,6 +1,9 @@
 use nih_plug::prelude::*;
 use std::sync::Arc;
 
+// SunVox FFI bindings
+mod sunvox_ffi;
+
 /// A minimal CLAP plugin that passes audio through unchanged.
 /// This serves as the foundation for integrating SunVox in Phase 2.
 struct SunVoxPlugin {
