@@ -9,13 +9,13 @@
 
 ## Email Template
 
-**Subject**: SunVox Library: SV_INIT_FLAG_OFFLINE still requires audio hardware access
+**Subject**: SunVox Library: Question about SV_INIT_FLAG_OFFLINE in sandboxed plugin environments
 
 ---
 
 Dear Alexander,
 
-I am developing an audio plugin using the SunVox library and have encountered an issue with the offline mode initialization. I hope you can provide guidance or consider this for a future update.
+I am developing a CLAP audio plugin using the SunVox library, following your guidance from the 2021 Juce forum thread where you confirmed this is possible. I have questions about `SV_INIT_FLAG_OFFLINE` behavior in strict sandbox environments.
 
 ### Issue Summary
 
@@ -79,20 +79,38 @@ I created a standalone test application to isolate the issue. Full details in at
 3. Same behavior regardless of other flag combinations
 4. Plugin infrastructure works perfectly - only `sv_init()` fails
 
+### Reference: Your 2021 Juce Forum Post
+
+In October 2021, you confirmed that SunVox works in plugins:
+> "It is definitely possible :)"
+
+You provided example code:
+```c
+sv_init( 0, sample_rate, 2, SV_INIT_FLAG_OFFLINE );
+```
+
+I followed this guidance, but encountered issues in containerized/sandboxed environments.
+
 ### Questions
 
-1. **Is there a way to initialize SunVox without any audio hardware access?**
-   - Perhaps an undocumented flag or configuration?
-   - Alternative initialization function for embedded use?
+1. **Does SV_INIT_FLAG_OFFLINE require audio hardware to exist?**
+   - Even if the hardware isn't actively used by SunVox?
+   - Will it work if hardware exists but access is blocked by sandbox?
 
-2. **Is this a known limitation?**
-   - Are there workarounds you recommend?
-   - Has anyone successfully used SunVox in audio plugins?
+2. **Have you tested SunVox plugins in production DAWs with strict sandboxes?**
+   - Bitwig Studio
+   - Ableton Live
+   - Logic Pro
+   - Do these work, or only less restricted environments?
 
-3. **Would you consider adding true offline mode?**
-   - For embedded/plugin use cases
-   - Where no audio hardware is available or accessible
-   - Hardware-independent initialization path
+3. **Is there a way to initialize SunVox with zero audio device access?**
+   - Truly hardware-independent initialization?
+   - Config string option like `audiodriver=none`?
+   - For containerized/embedded/sandboxed environments?
+
+4. **Are there requirements for OFFLINE mode that weren't documented?**
+   - Must audio subsystem initialization succeed?
+   - Are there platform-specific differences?
 
 ### Potential Solution
 

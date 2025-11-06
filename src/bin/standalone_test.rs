@@ -38,20 +38,20 @@ fn main() {
     println!("Platform: {}", std::env::consts::OS);
     println!("Arch: {}\n", std::env::consts::ARCH);
 
-    // Test 1: Basic initialization with OFFLINE mode
-    println!("Test 1: Initializing SunVox with OFFLINE mode");
-    println!("  Flags: SV_INIT_FLAG_OFFLINE | SV_INIT_FLAG_AUDIO_FLOAT32 | SV_INIT_FLAG_ONE_THREAD");
+    // Test 1: Basic initialization with OFFLINE mode ONLY (like NightRadio's example)
+    println!("Test 1: Initializing SunVox with OFFLINE mode ONLY");
+    println!("  Flags: SV_INIT_FLAG_OFFLINE (no other flags!)");
+    println!("  This matches NightRadio's Juce plugin example from 2021");
 
-    let flags = SV_INIT_FLAG_NO_DEBUG_OUTPUT
-        | SV_INIT_FLAG_OFFLINE
-        | SV_INIT_FLAG_AUDIO_FLOAT32
-        | SV_INIT_FLAG_ONE_THREAD;
+    let flags = SV_INIT_FLAG_OFFLINE;
 
     let sample_rate = 44100;
     let channels = 2;
 
+    // Try Test 1a: NULL config (standard approach)
+    println!("\n  Test 1a: NULL config");
     let result = unsafe {
-        sv_init(std::ptr::null(), sample_rate, channels, flags)
+        sv_init(0 as *const i8, sample_rate, channels, flags)
     };
 
     if result == 0 {
