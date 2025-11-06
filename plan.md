@@ -86,19 +86,29 @@ Integrate the SunVox library to enable basic audio generation within the CLAP pl
 
 ### Phase 2 Progress Summary
 
-**Status**: 🔄 Core implementation complete, testing and refinement ongoing
+**Status**: ⚠️ Core implementation complete, but blocked by SunVox initialization issue
 
 **Completed Steps**:
 - ✅ Step 2.1: FFI Bindings Setup
 - ✅ Step 2.2: Library Linking
 - ✅ Step 2.3: SunVox Initialization in Plugin
 - ✅ Step 2.4: Basic Audio Integration
+- ✅ Investigation: Created diagnostic tools and comprehensive analysis
 
-**In Progress**:
-- 🔄 Step 2.5: Error Handling & Safety (partial)
-- 🔄 Step 2.6: Testing & Validation (ongoing)
+**Current Blocker**: 🚨
+`sv_init()` fails in environments without audio hardware access, even with `SV_INIT_FLAG_OFFLINE`. See detailed analysis in:
+- `SUNVOX_INIT_INVESTIGATION.md` - Technical findings
+- `JUCE_FORUM_ANALYSIS.md` - Developer confirmation and nuances
+- `SUNVOX_BUG_REPORT.md` - Questions for SunVox developer
 
-**Key Achievement**: Plugin successfully generates audio from SunVox! The core integration is working. 🎵
+**Key Discoveries**:
+1. ✅ SunVox developer (NightRadio) confirms plugins ARE possible (2021 Juce forum)
+2. ⚠️ `SV_INIT_FLAG_OFFLINE` prevents audio *streaming* but NOT audio *initialization*
+3. ⚠️ Requires audio hardware to be ACCESSIBLE (even if unused by SunVox)
+4. ✅ Works on systems with audio hardware present
+5. ❌ Fails in containerized/strictly sandboxed environments
+
+**Next Steps**: Test on real hardware, contact developer, evaluate workarounds
 
 ### Steps
 
