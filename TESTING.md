@@ -22,6 +22,25 @@ purpose: |
 
 # SunVox CLAP Plugin - Testing Results
 
+## 🔥 Most Critical Test for User
+
+**Test 6: Standalone SunVox on macOS (non-sandboxed)**
+
+This is the **most important test** to run next. It will tell us if SunVox works on macOS outside of a plugin sandbox.
+
+```bash
+# Run this on your Mac:
+cargo run --bin sunvox_standalone_test --release
+```
+
+**Why this matters**:
+- Plugin in Bitwig failed (sandboxed) ❌
+- Standalone app should work (not sandboxed) ✅?
+- This validates if the issue is sandbox-specific
+- See [Test 6](#test-6-standalone-sunvox-init---macos-non-sandboxed--critical) for details
+
+---
+
 ## Test Result Legend
 
 - ✅ **Success**: Test passed completely
@@ -242,61 +261,64 @@ cargo build --release
 
 ### High Priority Tests
 
-#### Test 6: Standalone SunVox Init - Linux with Real Audio Hardware ⏸️
+#### Test 6: Standalone SunVox Init - macOS (Non-Sandboxed) ⏸️ 🔥 CRITICAL
 **Status**: Not yet tested
-**Hypothesis**: Will succeed because audio devices exist
+**Priority**: **HIGHEST** - User can test this now!
+**Hypothesis**: Will succeed because CoreAudio accessible outside plugin sandbox
 **Environment Needed**:
-- Linux system with working audio (not containerized)
-- ALSA/PulseAudio/JACK functional
-- Physical or virtual audio devices present
-
-**Expected Result**: `sv_init()` should return 0 (success)
-
-**How to test**:
-```bash
-# On Linux system with audio:
-cargo run --bin sunvox_standalone_test --release
-```
-
----
-
-#### Test 7: Standalone SunVox Init - macOS with Real Audio Hardware ⏸️
-**Status**: Not yet tested
-**Hypothesis**: Will succeed because CoreAudio accessible
-**Environment Needed**:
-- macOS system (Intel or Apple Silicon)
-- Standard user environment (not sandboxed)
+- macOS system (user has this ✅)
+- Standard terminal/shell (not sandboxed process)
 - CoreAudio functional
 
 **Expected Result**: `sv_init()` should return 0 (success)
 
 **How to test**:
 ```bash
-# On macOS system:
+# User runs on macOS system:
 cargo run --bin sunvox_standalone_test --release
 ```
 
+**Why this matters**:
+- If this succeeds → SunVox works on macOS outside sandbox
+- If this fails → Even non-sandboxed macOS has issues
+- Critical data point for understanding the problem
+
 ---
 
-#### Test 8: Plugin in Different DAWs (Real Hardware) ⏸️
-**Status**: Not yet tested
+#### Test 7: Standalone SunVox Init - Linux with Real Audio Hardware ⏸️
+**Status**: ❌ **Not possible** (no access to Linux with audio)
+**Note**: All Linux testing must be in container (no audio hardware)
+**Hypothesis**: Would succeed with audio devices present
+**Environment Needed**:
+- Linux system with working audio (not containerized)
+- ALSA/PulseAudio/JACK functional
+- ❌ **Not available for testing**
+
+---
+
+#### Test 8: Plugin in Different DAWs (macOS) ⏸️
+**Status**: Partially tested (Bitwig failed)
 **Priority**: HIGH
-**Environments to test**:
+**Available DAWs for User**:
 
-1. **Bitwig Studio** (Linux with audio)
-   - System with working audio hardware
-   - Not containerized/virtualized
-   - May still fail if sandbox blocks CoreAudio/ALSA
+1. **Bitwig Studio** (macOS) - ❌ Tested, FAILED
+   - Error 0x20103 (CoreAudio blocked by sandbox)
+   - Documented in Test 3
 
-2. **Reaper** (Linux/macOS/Windows)
+2. **Reaper** (macOS) - ⏸️ Not yet tested
    - Known for less restrictive sandboxing
    - May have better plugin permissions
+   - **User could test this**
 
-3. **Ableton Live** (macOS/Windows)
-   - Check sandbox behavior
-
-4. **Logic Pro** (macOS)
+3. **Logic Pro** (macOS) - ⏸️ Not yet tested (if user has it)
    - Apple's strict sandbox policies
+   - Likely to fail similar to Bitwig
+   - **User could test if available**
+
+4. **Other macOS DAWs** - ⏸️ Not yet tested
+   - Ableton Live (if user has it)
+   - FL Studio
+   - Any CLAP-compatible DAW user owns
 
 **How to test**:
 ```bash
@@ -456,22 +478,29 @@ sv_unload_dll();
 
 ## Testing Environment Access
 
-### Available Now
-- ✅ Linux container (no audio)
+### Available for AI Testing
+- ✅ **Linux container (no audio)** - All Linux testing limited to this environment
 - ✅ Build/compile environment
 - ✅ Unit testing
+- ⚠️ **Note**: Any Linux testing will be containerized without audio hardware
 
-### Need Access To
-- ⏸️ Linux system with audio hardware
-- ⏸️ macOS system with audio hardware
-- ⏸️ Multiple DAW applications for testing
-- ⏸️ Windows system (lower priority)
-
-### Can Request User To Test
-- 📧 User has macOS with Bitwig (tested, failed)
-- 📧 User could test on other DAWs
+### Available for User Testing
+- ✅ **macOS** - User's primary environment
+- ✅ **Bitwig Studio** - Tested (failed with sandbox error 0x20103)
+- 📧 User could test other DAWs (Reaper, Logic Pro, etc.)
 - 📧 User could test standalone app locally
 - 📧 User could try config string variations
+- 📧 User could test different SunVox library versions
+
+### NOT Available
+- ❌ Linux system with real audio hardware (no access)
+- ❌ Windows system (user doesn't have)
+- ❌ Cloud/CI systems with audio hardware
+
+### Constraints
+- **All Linux tests will be in container** → Will always fail audio init
+- **All real-world audio tests must be on macOS** → User-dependent
+- **Limited DAW diversity** → User's available DAWs only
 
 ---
 
