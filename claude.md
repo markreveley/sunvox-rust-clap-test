@@ -146,6 +146,110 @@ Example: Add a gain control
 - No allocations, locks, or system calls in audio thread
 - Keep buffer sizes reasonable
 
+## Testing Environments
+
+### ⚠️ CRITICAL: Local vs Sandboxed Testing
+
+This project requires testing in **two distinct environments** with different capabilities and limitations:
+
+#### 🖥️ Local Testing Environment (User's Mac)
+
+**What it is**:
+- Native macOS terminal/shell environment
+- Direct access to system audio hardware (CoreAudio)
+- No sandbox restrictions
+- Full file system access
+
+**What can be tested**:
+- ✅ Standalone SunVox initialization (`cargo run --bin sunvox_standalone_test`)
+- ✅ Direct audio hardware access
+- ✅ Real-world DAW plugin loading (Bitwig, Reaper, etc.)
+- ✅ File loading and resource access
+- ✅ Full system capabilities
+
+**Required for**:
+- Testing SunVox `sv_init()` outside plugin sandbox
+- Validating audio hardware requirements
+- Real DAW integration testing
+- End-to-end user experience validation
+
+**How AI Assistant helps**:
+- Provide commands for user to run
+- Interpret results from user-provided logs/output
+- Cannot directly execute these tests
+
+---
+
+#### 🐳 Sandboxed/Container Testing Environment (CI/Docker)
+
+**What it is**:
+- Linux container environment (kernel 4.4.0, x86_64)
+- **NO audio hardware access** (no ALSA, PulseAudio, JACK, CoreAudio)
+- Restricted permissions and capabilities
+- Automated testing environment
+
+**What can be tested**:
+- ✅ Build system (`cargo build --release`)
+- ✅ Compilation and linking
+- ✅ FFI bindings correctness
+- ✅ Code syntax and structure
+- ✅ Unit tests that don't require audio hardware
+- ⚠️ Plugin loading (but audio init will fail)
+
+**Limitations**:
+- ❌ SunVox `sv_init()` will ALWAYS fail (no audio hardware)
+- ❌ Cannot test real audio generation
+- ❌ Cannot validate DAW integration
+- ❌ Not representative of user environment
+
+**Good for**:
+- Rapid development iteration
+- Build verification
+- Code structure validation
+- FFI binding correctness
+
+---
+
+#### Test Classification
+
+When planning tests, always classify them:
+
+**🖥️ LOCAL ONLY** - Requires user's Mac:
+- Standalone SunVox initialization test
+- Real DAW plugin loading
+- Audio generation validation
+- Hardware requirement validation
+
+**🐳 SANDBOXED OK** - Can run in CI/container:
+- Build and compilation
+- Unit tests (with graceful audio init failure handling)
+- FFI binding syntax checks
+- Code linting and formatting
+
+**⚠️ HYBRID** - Partial testing in both:
+- Plugin structure (builds in sandbox, loads in local)
+- Error handling (can verify graceful failure in sandbox)
+- Fallback mechanisms (test tone generation)
+
+---
+
+#### Communication Protocol
+
+When AI Assistant plans tests:
+- **Always specify** which environment the test requires
+- **Mark LOCAL ONLY tests** with ⚠️ LOCAL TESTING REQUIRED
+- **Explain to user** what they need to run locally
+- **Interpret results** from user-provided logs/output
+- **Don't attempt** local-only tests in sandboxed environment
+
+When User provides test results:
+- **Include environment details** (macOS version, DAW name, etc.)
+- **Copy full output** or relevant log snippets
+- **Note any errors or warnings** from system console
+- **Specify success/failure** clearly
+
+---
+
 ## Development Guidelines
 
 ### Code Style
@@ -310,31 +414,83 @@ impl Plugin for SunVoxPlugin {
 
 ## Next Steps for Development
 
-### Immediate (Phase 2 Start)
-1. Read Phase 2 steps in `plan.md` carefully
-2. Study `sunvox_lib/sunvox_lib/headers/sunvox.h` - understand API
-3. Look at SunVox examples in `sunvox_lib/sunvox_lib/examples/`
-4. Decide on binding approach (bindgen vs manual)
-5. Create `src/sunvox_ffi.rs` with essential function declarations
+### 🔥 IMMEDIATE: Test 6 - Standalone SunVox on macOS (🖥️ LOCAL ONLY)
 
-### Short Term (Phase 2 Core)
-1. Add `build.rs` to link SunVox library
-2. Initialize SunVox in `Plugin::initialize()`
-3. Call `sv_audio_callback()` in `process()`
-4. Test audio generation works
+**Status**: ⚠️ LOCAL TESTING REQUIRED - Cannot be performed in sandboxed environment
 
-### Medium Term (Phase 2 Polish)
-1. Add error handling
-2. Test multiple instances
-3. Handle cleanup properly
+**Phase 2 Steps 2.1-2.4 are COMPLETE** but blocked by SunVox initialization failure.
+
+**Critical Next Step**:
+```bash
+# User must run this on their Mac:
+cargo run --bin sunvox_standalone_test --release
+```
+
+**Purpose**: Determine if SunVox works on macOS outside plugin sandbox
+
+**Expected outcomes**:
+- ✅ If succeeds: Issue is sandbox-specific, proceed with workarounds
+- ❌ If fails: Deeper macOS compatibility issue requiring different approach
+
+**What AI Assistant should do**:
+- Provide clear instructions for user to run test
+- Wait for user to provide test results
+- Interpret results and update documentation
+- Plan next steps based on test outcome
+
+**See**:
+- `plan.md` "Recommended Path Forward" section
+- `TESTING.md` Test 6 for full details
+
+---
+
+### Short Term (After Test 6)
+
+**If Test 6 Succeeds**:
+1. Test in Reaper or other DAW with less restrictive sandbox
+2. Investigate workarounds (pre-rendering, out-of-process)
+3. Contact SunVox developer with specific findings
+4. Document hardware/sandbox requirements
+
+**If Test 6 Fails**:
+1. Verify audio hardware is functional on macOS
+2. Test different flag combinations
+3. Contact SunVox developer about macOS ARM64 compatibility
+4. Evaluate alternative approaches
+
+---
+
+### Medium Term (If SunVox Works)
+
+**Phase 2 Completion**:
+1. Implement chosen workaround (if needed)
+2. Add comprehensive error handling
+3. Test multiple plugin instances
 4. Verify no memory leaks or crashes
+5. Document working configurations
+
+**Cross-Platform**:
+1. Test on Linux with real audio hardware (if available)
+2. Add platform-specific initialization if needed
+3. Document per-platform requirements
+
+---
 
 ### Long Term (Post Phase 2)
+
+**Feature Development**:
 1. Add parameters (map to SunVox module controllers)
 2. MIDI input support
-3. Project file loading
+3. Project file loading UI
 4. GUI for project selection
 5. Preset management
+6. Multiple SunVox slots
+
+**Production Readiness**:
+1. Comprehensive testing across DAWs
+2. Performance optimization
+3. User documentation
+4. Distribution/packaging
 
 ## Communication with User
 

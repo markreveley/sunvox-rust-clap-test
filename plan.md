@@ -339,20 +339,62 @@ Debug log from /tmp/sunvox_plugin_debug.log:
 
 ### Recommended Path Forward 📋
 
-1. **Immediate** (Next Session):
-   - Write standalone macOS test app to verify SunVox works outside sandbox
-   - Document test results
-   - Contact SunVox developer with findings
+#### 🔥 IMMEDIATE NEXT STEP: Test 6 (Requires Local Testing)
 
-2. **Short Term**:
-   - If SunVox responds with fix/guidance: Implement and test
-   - If SunVox limitation confirmed: Choose between Options 4 or 5
-   - If no response in 1 week: Proceed with Option 4 (pre-rendering) as proof-of-concept
+**⚠️ LOCAL TESTING REQUIRED** - This step CANNOT be performed in sandboxed CI/container environment
 
-3. **Long Term**:
-   - Test on Linux (may work better without sandbox restrictions)
-   - Consider Option 5 (out-of-process) if real-time synthesis critical
-   - Document findings for other developers attempting SunVox plugin integration
+**Status**: ⏸️ Ready to test
+**Test**: Standalone SunVox initialization on macOS (non-sandboxed)
+**Command**:
+```bash
+cargo run --bin sunvox_standalone_test --release
+```
+
+**Why this matters**:
+- Will determine if SunVox works on macOS outside plugin sandbox
+- Critical for understanding if issue is sandbox-specific or platform-wide
+- Required before contacting SunVox developer with findings
+- See `TESTING.md` Test 6 for full details
+
+**Expected outcomes**:
+- ✅ If succeeds: Issue is sandbox-related, proceed with workarounds or developer contact
+- ❌ If fails: Deeper macOS compatibility issue, requires different approach
+
+---
+
+#### Short Term (After Test 6)
+
+**If Test 6 Succeeds** (SunVox works locally):
+1. Test in Reaper (potentially less restrictive sandbox)
+2. Test dynamic loading approach (`sv_load_dll()`)
+3. Contact SunVox developer with specific sandbox findings
+4. Evaluate workarounds: pre-rendering vs out-of-process
+
+**If Test 6 Fails** (SunVox fails even locally):
+1. Verify macOS audio hardware is functional
+2. Test with different flag combinations
+3. Contact SunVox developer about macOS compatibility
+4. Consider platform-specific issues (ARM64 vs x86_64)
+
+---
+
+#### Long Term
+
+1. **Cross-Platform Testing**:
+   - Test on Linux with real audio hardware (if available)
+   - Document working configurations
+   - Create platform-specific initialization code if needed
+
+2. **Production Path** (if SunVox works):
+   - Implement chosen workaround (if needed)
+   - Add comprehensive error handling
+   - Test multiple DAW environments
+   - Document hardware/platform requirements
+
+3. **Alternative Path** (if SunVox blocked):
+   - Evaluate Option 4 (pre-rendering) as proof-of-concept
+   - Consider Option 5 (out-of-process) for full functionality
+   - Document findings for community
 
 ---
 
