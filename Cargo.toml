@@ -8,6 +8,10 @@ description = "A CLAP audio plugin integrating SunVox synthesizer"
 [lib]
 crate-type = ["cdylib"]
 
+[[bin]]
+name = "sunvox_standalone_test"
+path = "src/bin/standalone_test.rs"
+
 [dependencies]
 nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git" }
 
