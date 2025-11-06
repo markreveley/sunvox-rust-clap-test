@@ -1,5 +1,6 @@
 use nih_plug::prelude::*;
 use std::sync::Arc;
+use std::ffi::CString;
 
 // SunVox FFI bindings
 mod sunvox_ffi;
@@ -104,6 +105,31 @@ impl Plugin for SunVoxPlugin {
 
             nih_log!("✓ SunVox slot {} opened", self.sunvox_slot);
 
+            // Load an example SunVox project for testing
+            // Using a simple test song from the SunVox library resources
+            let project_path = CString::new("sunvox_lib/sunvox_lib/resources/song01.sunvox")
+                .expect("CString creation failed");
+
+            let result = sv_load(self.sunvox_slot, project_path.as_ptr());
+            if result != 0 {
+                nih_log!("⚠ Failed to load SunVox project: {}", result);
+                nih_log!("⚠ Audio generation will be disabled");
+                sv_close_slot(self.sunvox_slot);
+                sv_deinit();
+                self.sunvox_initialized = false;
+                return true; // Still return true so plugin loads
+            }
+
+            nih_log!("✓ SunVox project loaded successfully");
+
+            // Start playback
+            let result = sv_play_from_beginning(self.sunvox_slot);
+            if result != 0 {
+                nih_log!("⚠ Failed to start SunVox playback: {}", result);
+            } else {
+                nih_log!("✓ SunVox playback started");
+            }
+
             self.sunvox_initialized = true;
         }
 
@@ -125,15 +151,45 @@ impl Plugin for SunVoxPlugin {
 
     fn process(
         &mut self,
-        _buffer: &mut Buffer,
+        buffer: &mut Buffer,
         _aux: &mut AuxiliaryBuffers,
         _context: &mut impl ProcessContext<Self>,
     ) -> ProcessStatus {
-        // Phase 2.3 complete: SunVox is now initialized
-        // Phase 2.4 next: Call sv_audio_callback() here to generate audio
+        // Skip audio generation if SunVox is not initialized
+        if !self.sunvox_initialized {
+            return ProcessStatus::Normal;
+        }
 
-        // For now, still just passing audio through
-        // Step 2.4 will add: sv_audio_callback(buffer, frames, latency, time)
+        // Generate audio from SunVox
+        unsafe {
+            let num_frames = buffer.samples() as i32;
+
+            // Create interleaved buffer for SunVox (LRLRLR...)
+            let mut sunvox_buffer = vec![0.0f32; (num_frames * 2) as usize];
+
+            // Call SunVox to generate audio
+            // Parameters: buffer, frames, latency (0 for simplicity), current tick
+            let result = sv_audio_callback(
+                sunvox_buffer.as_mut_ptr() as *mut std::os::raw::c_void,
+                num_frames,
+                0, // latency
+                sv_get_ticks(),
+            );
+
+            // If SunVox generated audio (result == 1), copy to output
+            if result == 1 {
+                // Get output channels and de-interleave SunVox audio
+                let channels = buffer.as_slice();
+                for (channel_idx, channel) in channels.iter_mut().enumerate() {
+                    for (sample_idx, sample) in channel.iter_mut().enumerate() {
+                        // SunVox buffer is interleaved: LRLRLR...
+                        // channel 0 = left, channel 1 = right
+                        *sample = sunvox_buffer[sample_idx * 2 + channel_idx];
+                    }
+                }
+            }
+            // If result == 0, SunVox returned silence (buffer already zeroed)
+        }
 
         ProcessStatus::Normal
     }
