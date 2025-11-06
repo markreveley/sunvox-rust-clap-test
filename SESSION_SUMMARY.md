@@ -66,14 +66,23 @@ SunVox plugins work in **most real-world scenarios** because:
 
 ## Investigation Artifacts Created
 
-### 1. **Standalone Test Application**
+### 1. **Testing Results Document** 🆕
+`TESTING.md`
+- Complete test result tracking with environment details
+- Documents all tests performed (container, macOS Bitwig)
+- Lists tests still needed (real hardware validation)
+- Hypotheses with evidence tracking
+- Front matter for AI agent context
+- Critical path recommendations
+
+### 2. **Standalone Test Application**
 `src/bin/standalone_test.rs`
 - Diagnostic tool to test SunVox outside plugin context
 - Tests minimal initialization (OFFLINE flag only)
 - Reveals all audio subsystem access attempts
 - Run with: `cargo run --bin sunvox_standalone_test --release`
 
-### 2. **Technical Investigation Document**
+### 3. **Technical Investigation Document**
 `SUNVOX_INIT_INVESTIGATION.md`
 - Complete analysis of initialization behavior
 - Test results on Linux
@@ -177,13 +186,15 @@ Modified:
 - plan.md                       (updated blocker analysis)
 - src/bin/standalone_test.rs    (minimal flags test)
 - SUNVOX_BUG_REPORT.md         (refined questions)
+- Cargo.toml                    (added binary target)
+- SESSION_SUMMARY.md           (this document, updated)
 
 Created:
+- TESTING.md                    (complete test tracking) 🆕
 - SUNVOX_INIT_INVESTIGATION.md  (technical analysis)
 - JUCE_FORUM_ANALYSIS.md       (developer confirmation)
 - src/bin/standalone_test.rs    (diagnostic tool)
-- Cargo.toml                    (added binary target)
-- SESSION_SUMMARY.md           (this document)
+- SESSION_SUMMARY.md           (session overview)
 ```
 
 ## Commits Made
@@ -202,6 +213,17 @@ Created:
    - Updated Phase 2 Progress Summary
    - Documented blocker with nuances
    - Listed investigation documents
+
+4. **Add comprehensive session summary** (fd3d0a9)
+   - Complete session overview
+   - All artifacts documented
+   - Next steps outlined
+
+5. **Add comprehensive TESTING.md** (a9cae72) 🆕
+   - Front matter for AI agents
+   - All test results with environment details
+   - Hypotheses with evidence tracking
+   - Critical path recommendations
 
 ## Conclusion
 
