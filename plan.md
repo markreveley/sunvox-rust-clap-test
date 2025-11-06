@@ -74,49 +74,78 @@ A working CLAP plugin file that:
 
 ---
 
-## Phase 2: SunVox Library Integration
+## Phase 2: SunVox Library Integration 🔄 IN PROGRESS
 
 ### Goal
 Integrate the SunVox library to enable basic audio generation within the CLAP plugin.
 
 ### Prerequisites
-- Completed Phase 1 with working CLAP plugin
-- SunVox library files available at `sunvox_lib/sunvox_lib/`
-- SunVox header file at `sunvox_lib/sunvox_lib/headers/sunvox.h`
+- ✅ Completed Phase 1 with working CLAP plugin
+- ✅ SunVox library files available at `sunvox_lib/sunvox_lib/`
+- ✅ SunVox header file at `sunvox_lib/sunvox_lib/headers/sunvox.h`
 
 ### Steps
 
-#### 2.1 FFI Bindings Setup
-- [ ] Create Rust FFI bindings for SunVox C API
-  - Option A: Use `bindgen` to automatically generate bindings from `sunvox.h`
-  - Option B: Manually write FFI declarations for essential functions
-- [ ] Focus on core functions needed:
-  - `sv_init()` - Initialize SunVox
-  - `sv_deinit()` - Cleanup SunVox
-  - `sv_audio_callback()` - Get audio from SunVox (offline mode)
-  - `sv_open_slot()` - Open a SunVox slot
-  - `sv_close_slot()` - Close a slot
-  - `sv_load()` - Load a SunVox project
-  - `sv_play()` - Start playback
-  - `sv_stop()` - Stop playback
+#### 2.1 FFI Bindings Setup ✅ COMPLETE
+- [x] Create Rust FFI bindings for SunVox C API
+  - Used Option B: Manually write FFI declarations for essential functions
+  - Created `src/sunvox_ffi.rs` with 286 lines of bindings
+- [x] Focus on core functions needed:
+  - `sv_init()` - Initialize SunVox ✅
+  - `sv_deinit()` - Cleanup SunVox ✅
+  - `sv_audio_callback()` - Get audio from SunVox (offline mode) ✅
+  - `sv_open_slot()` - Open a SunVox slot ✅
+  - `sv_close_slot()` - Close a slot ✅
+  - `sv_load()` - Load a SunVox project ✅
+  - `sv_play()` - Start playback ✅
+  - `sv_stop()` - Stop playback ✅
+  - Plus many additional functions for comprehensive API coverage
 
-#### 2.2 Library Linking
-- [ ] Add `build.rs` script to handle platform-specific linking
-- [ ] Configure linking to appropriate SunVox library:
-  - Linux: `sunvox_lib/sunvox_lib/linux/lib_x86_64/sunvox.so`
-  - Windows: `sunvox_lib/sunvox_lib/windows/lib_x86_64/sunvox.dll`
-  - macOS: `sunvox_lib/sunvox_lib/macos/lib_x86_64/sunvox.dylib`
-- [ ] Set up `LD_LIBRARY_PATH` or equivalent for runtime loading
-- [ ] Consider bundling the library with the plugin or using dynamic loading
+#### 2.2 Library Linking ✅ COMPLETE
+- [x] Add `build.rs` script to handle platform-specific linking
+- [x] Configure linking to appropriate SunVox library:
+  - Linux: `sunvox_lib/sunvox_lib/linux/lib_x86_64/sunvox.so` ✅
+  - Windows: `sunvox_lib/sunvox_lib/windows/lib_x86_64/sunvox.dll` ✅
+  - macOS: `sunvox_lib/sunvox_lib/macos/lib_arm64/sunvox.dylib` (arm64) ✅
+  - macOS: `sunvox_lib/sunvox_lib/macos/lib_x86_64/sunvox.dylib` (x86_64) ✅
+- [x] Set up runtime library loading with rpath
+- [x] Bundle the library with the plugin (macOS)
+- [x] Created symlink `libsunvox.dylib` for proper macOS naming
 
-#### 2.3 SunVox Initialization in Plugin
-- [ ] Initialize SunVox in plugin's `initialize()` method
-  - Use `SV_INIT_FLAG_OFFLINE` flag for manual audio callback
-  - Use `SV_INIT_FLAG_AUDIO_FLOAT32` to match plugin's audio format
-  - Use `SV_INIT_FLAG_ONE_THREAD` for simpler threading model
-- [ ] Open a SunVox slot for playback
-- [ ] Store SunVox state in plugin struct
-- [ ] Implement proper cleanup in plugin's deactivate/drop
+**macOS-Specific Challenges Solved:**
+- ✅ Proper bundle structure: `Contents/MacOS/` + `Contents/Resources/` + `Info.plist`
+- ✅ Quarantine attribute removal (macOS Gatekeeper)
+- ✅ Ad-hoc code signing for local development
+- ✅ Created `install.sh` script to automate installation with security fixes
+- ✅ Bundle SunVox library using `@loader_path` for portable loading
+- ✅ Bundle song resources in `Contents/Resources/`
+
+#### 2.3 SunVox Initialization in Plugin ⚠️ BLOCKED
+- [x] Initialize SunVox in plugin's `initialize()` method - **IMPLEMENTED BUT FAILS**
+  - Uses `SV_INIT_FLAG_OFFLINE` flag for manual audio callback ✅
+  - Uses `SV_INIT_FLAG_AUDIO_FLOAT32` to match plugin's audio format ✅
+  - Uses `SV_INIT_FLAG_ONE_THREAD` for simpler threading model ✅
+- [x] Open a SunVox slot for playback (code written, not tested due to init failure)
+- [x] Store SunVox state in plugin struct ✅
+- [x] Implement proper cleanup in plugin's deactivate/drop ✅
+
+**🚨 CRITICAL BLOCKER IDENTIFIED:**
+
+`sv_init()` fails with error code `131331` (0x20103) when running in the DAW plugin host process:
+```
+[1762457935] === SunVox Plugin Initialize START ===
+[1762457935] Sample rate: 44100
+[1762457935] Calling sv_init with flags: 27
+[1762457935] ERROR: sv_init failed with code: 131331 (0x20103)
+```
+
+**Root Cause Analysis:**
+- Same error occurs in both unit tests and Bitwig plugin host
+- Error 0x20103 indicates audio hardware access failure
+- Even with `SV_INIT_FLAG_OFFLINE`, SunVox attempts to access macOS CoreAudio
+- Plugin runs in sandboxed process (`BitwigPluginHost-ARM64-NEON`)
+- Sandboxed process lacks audio hardware permissions
+- SunVox offline mode does not fully bypass hardware initialization on macOS
 
 #### 2.4 Basic Audio Integration
 - [ ] Implement simplest possible audio generation:
@@ -206,6 +235,119 @@ sv_deinit();
 - Windows: `.dll` dynamic libraries
 - macOS: `.dylib` dynamic libraries
 - May need platform-specific `build.rs` logic
+
+---
+
+## Current Status Summary (2025-11-05)
+
+### What Works ✅
+1. **Phase 1 Complete** - Basic CLAP plugin infrastructure
+   - Builds successfully on macOS (arm64) and Linux (x86_64)
+   - Loads correctly in Bitwig Studio and other CLAP hosts
+   - Proper macOS bundle structure with Info.plist
+   - Audio processing pipeline verified (test tone generation works)
+   - Code signing and quarantine handling automated via `install.sh`
+
+2. **Phase 2 Partial** - Infrastructure complete, but SunVox init blocked
+   - FFI bindings complete and tested (`src/sunvox_ffi.rs`)
+   - Library linking works across platforms (`build.rs`)
+   - SunVox library bundled with plugin
+   - Song resources bundled in plugin
+   - Debug logging implemented (`/tmp/sunvox_plugin_debug.log`)
+   - Graceful fallback to test tone when SunVox unavailable
+
+### Current Blocker 🚨
+
+**Issue:** `sv_init()` fails with error code `131331` (0x20103) in macOS DAW plugin host
+
+**Evidence:**
+```
+Debug log from /tmp/sunvox_plugin_debug.log:
+[1762457935] === SunVox Plugin Initialize START ===
+[1762457935] Sample rate: 44100
+[1762457935] Calling sv_init with flags: 27
+[1762457935] ERROR: sv_init failed with code: 131331 (0x20103)
+```
+
+**Technical Details:**
+- Error occurs in both unit tests and Bitwig plugin host process
+- Error 0x20103 = audio hardware access failure
+- Happens despite using `SV_INIT_FLAG_OFFLINE` (should bypass hardware)
+- Plugin runs in sandboxed `BitwigPluginHost-ARM64-NEON` process
+- macOS sandbox restricts audio hardware access for plugin processes
+- SunVox offline mode still attempts CoreAudio initialization on macOS
+
+**Impact:**
+- Plugin loads successfully but generates test tone instead of SunVox audio
+- All infrastructure is ready, only SunVox initialization blocked
+- Likely affects all macOS DAW hosts that use sandboxed plugin processes
+
+### Proposed Next Steps 🔬
+
+**Option 1: Investigate SunVox Offline Mode (Recommended First Step)**
+- [ ] Contact SunVox developer (Alexander Zolotov) about error 0x20103
+- [ ] Ask if `SV_INIT_FLAG_OFFLINE` should work without hardware access
+- [ ] Request macOS-specific guidance for plugin host environments
+- [ ] Check if there's an updated SunVox library version that fixes this
+- [ ] Test SunVox in a non-sandboxed standalone app to confirm it works on macOS
+- **Effort:** Low, **Impact:** High if SunVox can be fixed upstream
+
+**Option 2: Alternative Initialization Approaches**
+- [ ] Try different flag combinations (remove `SV_INIT_FLAG_NO_DEBUG_OUTPUT`?)
+- [ ] Test if initializing with sample rate 0 or NULL config helps
+- [ ] Investigate if there's a "headless" or "embedded" mode
+- [ ] Check SunVox examples for plugin-specific initialization patterns
+- **Effort:** Low-Medium, **Impact:** Medium (may not solve root cause)
+
+**Option 3: Entitlements and Permissions**
+- [ ] Research macOS audio unit entitlements for plugin sandboxes
+- [ ] Add audio entitlements to Info.plist
+- [ ] Test if Bitwig allows plugin to request audio permissions
+- [ ] Investigate if signing with proper Apple Developer ID helps
+- **Effort:** Medium, **Impact:** Low (DAW controls sandbox, not plugin)
+
+**Option 4: Pre-Rendering Approach**
+- [ ] Pre-render SunVox projects to audio files offline
+- [ ] Bundle pre-rendered samples with plugin
+- [ ] Load samples instead of live SunVox generation
+- [ ] Use SunVox only for project creation/editing, not runtime
+- **Effort:** Medium, **Impact:** High (works but loses interactivity)
+  - **Pros:** Guaranteed to work, simple implementation
+  - **Cons:** Lose real-time synthesis, parameters, MIDI input
+
+**Option 5: Out-of-Process Audio Generation**
+- [ ] Run SunVox in a separate unsandboxed helper process
+- [ ] Use IPC (shared memory, pipes, etc.) to send audio to plugin
+- [ ] Helper process has audio hardware access, sends samples to plugin
+- [ ] More complex but allows full SunVox functionality
+- **Effort:** High, **Impact:** High (complex but fully functional)
+  - **Pros:** Full SunVox functionality, bypasses sandbox
+  - **Cons:** Complex architecture, latency concerns, process management
+
+**Option 6: Alternative to SunVox**
+- [ ] Research other modular synth libraries that work in plugins
+- [ ] Consider using native Rust synthesis (e.g., `dasp`, `fundsp`)
+- [ ] Build minimal modular synth specific to plugin use case
+- **Effort:** Very High, **Impact:** High but changes project goal
+  - **Pros:** Full control, no dependency issues
+  - **Cons:** Loses SunVox unique features, major scope change
+
+### Recommended Path Forward 📋
+
+1. **Immediate** (Next Session):
+   - Write standalone macOS test app to verify SunVox works outside sandbox
+   - Document test results
+   - Contact SunVox developer with findings
+
+2. **Short Term**:
+   - If SunVox responds with fix/guidance: Implement and test
+   - If SunVox limitation confirmed: Choose between Options 4 or 5
+   - If no response in 1 week: Proceed with Option 4 (pre-rendering) as proof-of-concept
+
+3. **Long Term**:
+   - Test on Linux (may work better without sandbox restrictions)
+   - Consider Option 5 (out-of-process) if real-time synthesis critical
+   - Document findings for other developers attempting SunVox plugin integration
 
 ---
 

@@ -19,6 +19,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Copy the dylib with the correct name
     cp target/release/libsunvox_clap.dylib "$BUNDLE_DIR/Contents/MacOS/sunvox_clap"
 
+    # Bundle SunVox test song with the plugin
+    mkdir -p "$BUNDLE_DIR/Contents/Resources"
+    cp sunvox_lib/sunvox_lib/resources/song01.sunvox "$BUNDLE_DIR/Contents/Resources/"
+
     # Bundle SunVox library with the plugin
     ARCH=$(uname -m)
     if [[ "$ARCH" == "arm64" ]]; then
@@ -66,6 +70,11 @@ EOF
 
     INSTALL_DIR="$HOME/Library/Audio/Plug-Ins/CLAP"
     echo "✓ macOS bundle created successfully!"
+    echo ""
+    echo "IMPORTANT: On macOS, use the install script to properly handle security attributes:"
+    echo "  ./install.sh"
+    echo ""
+    echo "Or install manually and remove quarantine:"
 else
     # Linux: Simple structure
     echo "Creating Linux bundle structure..."

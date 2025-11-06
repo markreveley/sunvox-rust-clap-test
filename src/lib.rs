@@ -1,10 +1,24 @@
 use nih_plug::prelude::*;
 use std::sync::Arc;
 use std::ffi::CString;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 // SunVox FFI bindings
 mod sunvox_ffi;
 use sunvox_ffi::*;
+
+// Debug logging helper
+fn debug_log(msg: &str) {
+    let log_path = "/tmp/sunvox_plugin_debug.log";
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+    {
+        let _ = writeln!(file, "[{}] {}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(), msg);
+    }
+}
 
 /// A CLAP plugin integrating SunVox modular synthesizer.
 /// Phase 2: Now initializes SunVox for audio generation.
@@ -67,8 +81,11 @@ impl Plugin for SunVoxPlugin {
         buffer_config: &BufferConfig,
         _context: &mut impl InitContext<Self>,
     ) -> bool {
+        debug_log("=== SunVox Plugin Initialize START ===");
+
         // Store the sample rate from the host
         self.sample_rate = buffer_config.sample_rate;
+        debug_log(&format!("Sample rate: {}", buffer_config.sample_rate));
 
         // Initialize SunVox in offline mode with float32 audio
         unsafe {
@@ -77,6 +94,7 @@ impl Plugin for SunVoxPlugin {
                 | SV_INIT_FLAG_AUDIO_FLOAT32
                 | SV_INIT_FLAG_ONE_THREAD;
 
+            debug_log(&format!("Calling sv_init with flags: {}", flags));
             let result = sv_init(
                 std::ptr::null(),
                 buffer_config.sample_rate as i32,
@@ -85,6 +103,7 @@ impl Plugin for SunVoxPlugin {
             );
 
             if result != 0 {
+                debug_log(&format!("ERROR: sv_init failed with code: {} (0x{:x})", result, result));
                 nih_log!("⚠ SunVox initialization failed with code: {} (0x{:x})", result, result);
                 nih_log!("⚠ This may be expected in some environments");
                 nih_log!("⚠ Plugin will continue but audio generation will be disabled");
@@ -92,27 +111,59 @@ impl Plugin for SunVoxPlugin {
                 return true; // Still return true so plugin loads
             }
 
+            debug_log("SUCCESS: sv_init succeeded");
             nih_log!("✓ SunVox initialized successfully at {} Hz", buffer_config.sample_rate);
 
             // Open slot 0 for playback
+            debug_log(&format!("Opening slot {}", self.sunvox_slot));
             let result = sv_open_slot(self.sunvox_slot);
             if result != 0 {
+                debug_log(&format!("ERROR: sv_open_slot failed: {}", result));
                 nih_log!("⚠ Failed to open SunVox slot: {}", result);
                 sv_deinit();
                 self.sunvox_initialized = false;
                 return true; // Still return true so plugin loads
             }
 
+            debug_log("SUCCESS: Slot opened");
             nih_log!("✓ SunVox slot {} opened", self.sunvox_slot);
 
             // Load an example SunVox project for testing
-            // Using a simple test song from the SunVox library resources
-            let project_path = CString::new("sunvox_lib/sunvox_lib/resources/song01.sunvox")
-                .expect("CString creation failed");
+            // Try to find the song in the bundle's Resources directory (macOS)
+            // or fall back to relative path (Linux)
+            debug_log("Attempting to load SunVox project...");
+            let song_paths = [
+                "/Users/mark/Library/Audio/Plug-Ins/CLAP/sunvox_clap.clap/Contents/Resources/song01.sunvox",
+                "song01.sunvox",
+                "Resources/song01.sunvox",
+            ];
 
-            let result = sv_load(self.sunvox_slot, project_path.as_ptr());
-            if result != 0 {
-                nih_log!("⚠ Failed to load SunVox project: {}", result);
+            let mut loaded = false;
+            for path_str in &song_paths {
+                debug_log(&format!("Trying path: {}", path_str));
+                let project_path = match CString::new(*path_str) {
+                    Ok(p) => p,
+                    Err(_) => {
+                        debug_log("  Failed to create CString");
+                        continue;
+                    }
+                };
+
+                let result = sv_load(self.sunvox_slot, project_path.as_ptr());
+                if result == 0 {
+                    debug_log(&format!("SUCCESS: Loaded from {}", path_str));
+                    nih_log!("✓ SunVox project loaded from: {}", path_str);
+                    loaded = true;
+                    break;
+                } else {
+                    debug_log(&format!("  Failed with error: {}", result));
+                    nih_log!("⚠ Failed to load from {}: error {}", path_str, result);
+                }
+            }
+
+            if !loaded {
+                debug_log("ERROR: Could not load project from any path");
+                nih_log!("⚠ Could not load SunVox project from any path");
                 nih_log!("⚠ Audio generation will be disabled");
                 sv_close_slot(self.sunvox_slot);
                 sv_deinit();
@@ -120,17 +171,19 @@ impl Plugin for SunVoxPlugin {
                 return true; // Still return true so plugin loads
             }
 
-            nih_log!("✓ SunVox project loaded successfully");
-
             // Start playback
+            debug_log("Starting playback...");
             let result = sv_play_from_beginning(self.sunvox_slot);
             if result != 0 {
+                debug_log(&format!("ERROR: playback failed: {}", result));
                 nih_log!("⚠ Failed to start SunVox playback: {}", result);
             } else {
+                debug_log("SUCCESS: Playback started");
                 nih_log!("✓ SunVox playback started");
             }
 
             self.sunvox_initialized = true;
+            debug_log("=== SunVox Plugin Initialize COMPLETE (success) ===");
         }
 
         true
@@ -157,6 +210,14 @@ impl Plugin for SunVoxPlugin {
     ) -> ProcessStatus {
         // Skip audio generation if SunVox is not initialized
         if !self.sunvox_initialized {
+            // Generate test tone if SunVox failed to initialize
+            let channels = buffer.as_slice();
+            for (_channel_idx, channel) in channels.iter_mut().enumerate() {
+                for (sample_idx, sample) in channel.iter_mut().enumerate() {
+                    let phase = (sample_idx as f32) / self.sample_rate * 440.0 * 2.0 * std::f32::consts::PI;
+                    *sample = phase.sin() * 0.05; // Quieter test tone
+                }
+            }
             return ProcessStatus::Normal;
         }
 
@@ -168,7 +229,6 @@ impl Plugin for SunVoxPlugin {
             let mut sunvox_buffer = vec![0.0f32; (num_frames * 2) as usize];
 
             // Call SunVox to generate audio
-            // Parameters: buffer, frames, latency (0 for simplicity), current tick
             let result = sv_audio_callback(
                 sunvox_buffer.as_mut_ptr() as *mut std::os::raw::c_void,
                 num_frames,
@@ -176,19 +236,14 @@ impl Plugin for SunVoxPlugin {
                 sv_get_ticks(),
             );
 
-            // If SunVox generated audio (result == 1), copy to output
-            if result == 1 {
-                // Get output channels and de-interleave SunVox audio
-                let channels = buffer.as_slice();
-                for (channel_idx, channel) in channels.iter_mut().enumerate() {
-                    for (sample_idx, sample) in channel.iter_mut().enumerate() {
-                        // SunVox buffer is interleaved: LRLRLR...
-                        // channel 0 = left, channel 1 = right
-                        *sample = sunvox_buffer[sample_idx * 2 + channel_idx];
-                    }
+            // Copy SunVox audio to output (result 1 = audio, 0 = silence)
+            let channels = buffer.as_slice();
+            for (channel_idx, channel) in channels.iter_mut().enumerate() {
+                for (sample_idx, sample) in channel.iter_mut().enumerate() {
+                    // SunVox buffer is interleaved: LRLRLR...
+                    *sample = sunvox_buffer[sample_idx * 2 + channel_idx];
                 }
             }
-            // If result == 0, SunVox returned silence (buffer already zeroed)
         }
 
         ProcessStatus::Normal
