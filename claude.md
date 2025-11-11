@@ -15,12 +15,19 @@ A working "hello world" CLAP plugin has been implemented:
 - Passes audio through (no processing yet)
 - Proper plugin metadata and structure in place
 
-### 🔄 Phase 2: Next - SunVox Integration
-Need to integrate the SunVox library for audio synthesis:
-- Create FFI bindings for SunVox C API
-- Link SunVox library to plugin
-- Initialize SunVox in offline mode
-- Generate audio in the plugin's process callback
+### 🚫 Phase 2: BLOCKED BY SUNVOX ARM64 LIBRARY BUG
+SunVox integration implementation is complete, but blocked by library bug:
+- ✅ FFI bindings created (`src/sunvox_ffi.rs`)
+- ✅ Library linking configured (`build.rs`)
+- ✅ Plugin initialization code written
+- ✅ Audio generation code implemented
+- ✅ Graceful error handling with fallback (test tone)
+- ❌ **BLOCKER**: SunVox Library v2.1.3 fails on macOS ARM64 with error 0x20103
+
+**Critical Issue**: `sv_init()` fails on macOS ARM64 across ALL flag combinations and environments (tested 6 configs, all failed with CoreAudio initialization error 0x20103)
+
+**Status Date**: November 11, 2025
+**Action Required**: Contact SunVox developer (see `SUNVOX_ARM64_BUG_REPORT.md`)
 
 ## Key Files
 
@@ -37,10 +44,15 @@ Need to integrate the SunVox library for audio synthesis:
 - **`.gitignore`** - Excludes target/, Cargo.lock
 
 ### Documentation
-- **`plan.md`** - Complete two-phase development plan with checklists
+- **`plan.md`** - Complete two-phase development plan with checklists ⭐ START HERE
 - **`README.md`** - Project overview and installation instructions
 - **`local_instructions.md`** - Comprehensive local development guide
-- **`claude.md`** - This file (AI assistant context)
+- **`CLAUDE.md`** - This file (AI assistant context)
+- **`TESTING.md`** - Complete test history (Tests 1-6) ⭐ CRITICAL
+- **`SUNVOX_ARM64_BUG_REPORT.md`** - Bug report for SunVox developer ⭐ ACTION ITEM
+- **`NEXT_STEPS.md`** - Decision tree and alternatives ⭐ ROADMAP
+- **`SUNVOX_INIT_INVESTIGATION.md`** - Technical investigation details
+- **`JUCE_FORUM_ANALYSIS.md`** - Developer confirmation analysis
 
 ### SunVox Library (Already Included)
 - **`sunvox_lib/sunvox_lib/headers/sunvox.h`** - C API header
@@ -50,17 +62,27 @@ Need to integrate the SunVox library for audio synthesis:
 
 ## Quick Reference
 
+### Current Blocker Summary (November 11, 2025)
+**Problem**: SunVox Library v2.1.3 ARM64 has CoreAudio initialization bug
+**Error**: 0x20103 (CoreAudio failure) on macOS ARM64
+**Tests Run**: 6 different flag combinations, all failed
+**Environments**: Both sandboxed (plugin) and non-sandboxed (terminal)
+**Reproducibility**: 100% - fails every time on ARM64
+**Action Needed**: Contact SunVox developer with bug report
+
 ### Building
 ```bash
 ./bundle.sh                          # Build and create CLAP bundle
 cargo build --release                # Manual build
 cargo check                          # Fast syntax check
+cargo run --bin sunvox_standalone_test --release  # Test SunVox init (will fail on ARM64)
 ```
 
 ### Installing (for testing)
 ```bash
 mkdir -p ~/.clap
 cp -r target/release/sunvox_clap.clap ~/.clap/
+# Plugin loads but SunVox init fails - generates test tone instead
 ```
 
 ### Project Structure
@@ -414,33 +436,45 @@ impl Plugin for SunVoxPlugin {
 
 ## Next Steps for Development
 
-### 🔥 IMMEDIATE: Test 6 - Standalone SunVox on macOS (🖥️ LOCAL ONLY)
+### 🚨 CRITICAL BLOCKER: SunVox ARM64 Library Bug (COMPLETED TESTING)
 
-**Status**: ⚠️ LOCAL TESTING REQUIRED - Cannot be performed in sandboxed environment
+**Test 6 Status**: ✅ **COMPLETE** - All testing finished November 11, 2025
 
-**Phase 2 Steps 2.1-2.4 are COMPLETE** but blocked by SunVox initialization failure.
+**Results**: ❌ ALL 6 flag combinations FAILED on macOS ARM64
+- Test 1: `flags = 0` (official example) → FAILED (0x20103)
+- Test 2: `SV_INIT_FLAG_OFFLINE` → FAILED (0x20103)
+- Test 3: `SV_INIT_FLAG_USER_AUDIO_CALLBACK` → FAILED (0x20103)
+- Test 4: `USER_AUDIO_CALLBACK | OFFLINE` → FAILED (0x20103)
+- Test 5: Full plugin flags → FAILED (0x20103)
+- Test 6: Additional combinations → FAILED (0x20103)
 
-**Critical Next Step**:
-```bash
-# User must run this on their Mac:
-cargo run --bin sunvox_standalone_test --release
-```
+**Conclusion**: SunVox Library v2.1.3 ARM64 has a CoreAudio initialization bug
+**Environment Tested**: Non-sandboxed terminal application (full system access)
+**Error**: Consistent 0x20103 across all tests
 
-**Purpose**: Determine if SunVox works on macOS outside plugin sandbox
+**See Complete Results**:
+- `TESTING.md` - Test 6 section with full details
+- `SUNVOX_ARM64_BUG_REPORT.md` - Comprehensive bug report
 
-**Expected outcomes**:
-- ✅ If succeeds: Issue is sandbox-specific, proceed with workarounds
-- ❌ If fails: Deeper macOS compatibility issue requiring different approach
+### ⚠️ IMMEDIATE ACTION REQUIRED
 
-**What AI Assistant should do**:
-- Provide clear instructions for user to run test
-- Wait for user to provide test results
-- Interpret results and update documentation
-- Plan next steps based on test outcome
+**Next Step**: Contact SunVox developer (NightRadio)
 
-**See**:
-- `plan.md` "Recommended Path Forward" section
-- `TESTING.md` Test 6 for full details
+1. **Send bug report** to https://warmplace.ru/forum/ or developer email
+   - Use `SUNVOX_ARM64_BUG_REPORT.md` as message content
+   - Subject: "SunVox Library v2.1.3 - CoreAudio Failure on macOS ARM64"
+
+2. **Follow timeline** in `NEXT_STEPS.md`:
+   - Week 1-2: Wait for developer response
+   - Week 3: Test Rosetta workaround if no response
+   - Week 4: Make strategic decision (wait vs. alternative engine)
+
+3. **Alternative options** documented in `NEXT_STEPS.md`:
+   - Option A: Rosetta 2 translation (x86_64 library)
+   - Option B: Out-of-process architecture
+   - Option C: Pre-rendering approach
+   - Option D: Alternative synthesis engine
+   - Option E: Wait for library fix (recommended)
 
 ---
 

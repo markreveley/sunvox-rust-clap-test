@@ -74,7 +74,7 @@ A working CLAP plugin file that:
 
 ---
 
-## Phase 2: SunVox Library Integration 🔄 IN PROGRESS
+## Phase 2: SunVox Library Integration 🚫 BLOCKED
 
 ### Goal
 Integrate the SunVox library to enable basic audio generation within the CLAP plugin.
@@ -86,29 +86,49 @@ Integrate the SunVox library to enable basic audio generation within the CLAP pl
 
 ### Phase 2 Progress Summary
 
-**Status**: ⚠️ Core implementation complete, but blocked by SunVox initialization issue
+**Status**: 🚫 **BLOCKED BY SUNVOX ARM64 LIBRARY BUG**
 
 **Completed Steps**:
 - ✅ Step 2.1: FFI Bindings Setup
 - ✅ Step 2.2: Library Linking
 - ✅ Step 2.3: SunVox Initialization in Plugin
 - ✅ Step 2.4: Basic Audio Integration
-- ✅ Investigation: Created diagnostic tools and comprehensive analysis
+- ✅ Step 2.5: Error Handling & Safety (graceful fallback)
+- ✅ Step 2.6: Comprehensive Testing (all configurations)
 
-**Current Blocker**: 🚨
-`sv_init()` fails in environments without audio hardware access, even with `SV_INIT_FLAG_OFFLINE`. See detailed analysis in:
-- `SUNVOX_INIT_INVESTIGATION.md` - Technical findings
-- `JUCE_FORUM_ANALYSIS.md` - Developer confirmation and nuances
-- `SUNVOX_BUG_REPORT.md` - Questions for SunVox developer
+**Current Blocker**: 🚨 **CRITICAL - LIBRARY BUG**
 
-**Key Discoveries**:
-1. ✅ SunVox developer (NightRadio) confirms plugins ARE possible (2021 Juce forum)
-2. ⚠️ `SV_INIT_FLAG_OFFLINE` prevents audio *streaming* but NOT audio *initialization*
-3. ⚠️ Requires audio hardware to be ACCESSIBLE (even if unused by SunVox)
-4. ✅ Works on systems with audio hardware present
-5. ❌ Fails in containerized/strictly sandboxed environments
+`sv_init()` fails on macOS ARM64 with error 0x20103 (CoreAudio initialization failure) across **ALL flag combinations** and **ALL environments** (sandboxed and non-sandboxed).
 
-**Next Steps**: Test on real hardware, contact developer, evaluate workarounds
+**Testing Completed** (November 11, 2025):
+- ✅ **Test 6**: Comprehensive standalone testing on macOS ARM64
+- ✅ Tested 6 different flag combinations (including official examples)
+- ✅ Tested in both plugin (sandboxed) and terminal (non-sandboxed) environments
+- ❌ **Result**: ALL tests failed with identical error code 0x20103
+
+**Key Findings**:
+1. 🚫 **SunVox Library v2.1.3 ARM64 has CoreAudio initialization bug**
+2. ❌ Fails even with `flags = 0` (official example configuration)
+3. ❌ Fails even with `SV_INIT_FLAG_USER_AUDIO_CALLBACK` (should bypass audio devices)
+4. ❌ Fails in non-sandboxed terminal app (not a permissions issue)
+5. ✅ Library loads correctly, partial initialization occurs
+6. ✅ x86_64 examples only in official distribution (ARM64 untested by developer?)
+7. 🚫 **No workaround available** - this is a library-level bug
+
+**Documentation Created**:
+- `TESTING.md` - Complete test results across all environments
+- `SUNVOX_ARM64_BUG_REPORT.md` - Comprehensive bug report for developer
+- `NEXT_STEPS.md` - Action plan and alternatives
+- `SUNVOX_INIT_INVESTIGATION.md` - Initial technical findings
+- `JUCE_FORUM_ANALYSIS.md` - Developer confirmation analysis
+
+**Next Actions**: ⚠️
+1. **Contact SunVox developer (NightRadio)** with bug report
+2. **Wait 2 weeks** for developer response
+3. **If no fix**: Test Rosetta workaround (x86_64 library with translation)
+4. **If Rosetta fails**: Choose alternative synthesis engine
+
+**See**: `NEXT_STEPS.md` for detailed action plan
 
 ### Steps
 

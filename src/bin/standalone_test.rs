@@ -38,43 +38,144 @@ fn main() {
     println!("Platform: {}", std::env::consts::OS);
     println!("Arch: {}\n", std::env::consts::ARCH);
 
-    // Test 1: Basic initialization with OFFLINE mode ONLY (like NightRadio's example)
-    println!("Test 1: Initializing SunVox with OFFLINE mode ONLY");
-    println!("  Flags: SV_INIT_FLAG_OFFLINE (no other flags!)");
-    println!("  This matches NightRadio's Juce plugin example from 2021");
-
-    let flags = SV_INIT_FLAG_OFFLINE;
-
     let sample_rate = 44100;
     let channels = 2;
+    let mut success = false;
 
-    // Try Test 1a: NULL config (standard approach)
-    println!("\n  Test 1a: NULL config");
-    let result = unsafe {
-        sv_init(0 as *const i8, sample_rate, channels, flags)
+    // Test 1: NO FLAGS (like the official C example test1.c)
+    println!("Test 1: Initializing SunVox with NO FLAGS");
+    println!("  Flags: 0 (none)");
+    println!("  This matches the official SunVox C example test1.c");
+
+    let flags_test1 = 0;
+
+    let mut result = unsafe {
+        sv_init(0 as *const i8, sample_rate, channels, flags_test1)
     };
 
     if result == 0 {
-        println!("  ✅ SUCCESS: sv_init() returned 0");
+        println!("  ✅ SUCCESS!");
+        success = true;
     } else {
         println!("  ❌ FAILURE: sv_init() returned {} (0x{:X})", result, result);
-        println!("\n  Error code 0x{:X} indicates:", result);
         if result == 131331 || result == 0x20103 {
-            println!("  - Audio hardware access failure");
-            println!("  - CoreAudio initialization blocked");
-            println!("  - Likely sandbox/permissions issue");
+            println!("     (CoreAudio initialization blocked)");
         }
-        println!("\nExiting - cannot continue without successful initialization");
+
+        // Clean up partial initialization
+        unsafe { sv_deinit(); }
+    }
+
+    // Test 2: With OFFLINE mode (like NightRadio's Juce plugin example)
+    if !success {
+        println!("\nTest 2: OFFLINE mode only");
+        println!("  Flags: SV_INIT_FLAG_OFFLINE");
+        println!("  This matches NightRadio's Juce plugin example from 2021");
+
+        let flags_test2 = SV_INIT_FLAG_OFFLINE;
+
+        result = unsafe {
+            sv_init(0 as *const i8, sample_rate, channels, flags_test2)
+        };
+
+        if result == 0 {
+            println!("  ✅ SUCCESS!");
+            success = true;
+        } else {
+            println!("  ❌ FAILURE: sv_init() returned {} (0x{:X})", result, result);
+            unsafe { sv_deinit(); }
+        }
+    }
+
+    // Test 3: With USER_AUDIO_CALLBACK flag only
+    if !success {
+        println!("\nTest 3: USER_AUDIO_CALLBACK only");
+        println!("  Flags: SV_INIT_FLAG_USER_AUDIO_CALLBACK");
+        println!("  User provides audio callback, no system audio device");
+
+        let flags_test3 = SV_INIT_FLAG_USER_AUDIO_CALLBACK;
+
+        result = unsafe {
+            sv_init(0 as *const i8, sample_rate, channels, flags_test3)
+        };
+
+        if result == 0 {
+            println!("  ✅ SUCCESS!");
+            success = true;
+        } else {
+            println!("  ❌ FAILURE: sv_init() returned {} (0x{:X})", result, result);
+            unsafe { sv_deinit(); }
+        }
+    }
+
+    // Test 4: With USER_AUDIO_CALLBACK + OFFLINE
+    if !success {
+        println!("\nTest 4: USER_AUDIO_CALLBACK + OFFLINE");
+        println!("  Flags: SV_INIT_FLAG_USER_AUDIO_CALLBACK | SV_INIT_FLAG_OFFLINE");
+
+        let flags_test4 = SV_INIT_FLAG_USER_AUDIO_CALLBACK | SV_INIT_FLAG_OFFLINE;
+
+        result = unsafe {
+            sv_init(0 as *const i8, sample_rate, channels, flags_test4)
+        };
+
+        if result == 0 {
+            println!("  ✅ SUCCESS!");
+            success = true;
+        } else {
+            println!("  ❌ FAILURE: sv_init() returned {} (0x{:X})", result, result);
+            unsafe { sv_deinit(); }
+        }
+    }
+
+    // Test 5: With full plugin flags (like our plugin uses)
+    if !success {
+        println!("\nTest 5: Full plugin flags");
+        println!("  Flags: NO_DEBUG_OUTPUT | USER_AUDIO_CALLBACK | AUDIO_FLOAT32 | ONE_THREAD | OFFLINE");
+
+        let flags_test5 = SV_INIT_FLAG_NO_DEBUG_OUTPUT
+            | SV_INIT_FLAG_USER_AUDIO_CALLBACK
+            | SV_INIT_FLAG_AUDIO_FLOAT32
+            | SV_INIT_FLAG_ONE_THREAD
+            | SV_INIT_FLAG_OFFLINE;
+
+        result = unsafe {
+            sv_init(0 as *const i8, sample_rate, channels, flags_test5)
+        };
+
+        if result == 0 {
+            println!("  ✅ SUCCESS!");
+            success = true;
+        } else {
+            println!("  ❌ FAILURE: sv_init() returned {} (0x{:X})", result, result);
+            unsafe { sv_deinit(); }
+        }
+    }
+
+    if !success {
+        println!("\n==============================================");
+        println!("❌ ALL TESTS FAILED");
+        println!("==============================================");
+        println!("SunVox cannot initialize on this system with any flag combination.");
+        println!("\nPossible reasons:");
+        println!("1. macOS ARM64 compatibility issue with SunVox library");
+        println!("2. System audio drivers not accessible");
+        println!("3. Library version incompatibility");
+        println!("\nRecommended action: Contact SunVox developer (NightRadio)");
         return;
     }
 
-    // Test 2: Get sample rate
-    println!("\nTest 2: Getting sample rate");
+    println!("\n==============================================");
+    println!("✅ INITIALIZATION SUCCESSFUL!");
+    println!("==============================================\n");
+
+    // Test 3: Get sample rate
+    println!("\nTest 3: Getting sample rate");
     let sr = unsafe { sv_get_sample_rate() };
     println!("  Sample rate: {} Hz", sr);
 
-    // Test 3: Open a slot
-    println!("\nTest 3: Opening SunVox slot 0");
+    // Test 4: Open a slot
+    println!("\nTest 4: Opening SunVox slot 0");
     let slot = 0;
     let result = unsafe { sv_open_slot(slot) };
     if result == 0 {
@@ -83,8 +184,8 @@ fn main() {
         println!("  ❌ Failed to open slot: {}", result);
     }
 
-    // Test 4: Load a project
-    println!("\nTest 4: Loading SunVox project");
+    // Test 5: Load a project
+    println!("\nTest 5: Loading SunVox project");
     let project_path = "sunvox_lib/sunvox_lib/resources/song01.sunvox";
     println!("  Project: {}", project_path);
 
@@ -98,8 +199,8 @@ fn main() {
         println!("  Note: File may not exist at this path");
     }
 
-    // Test 5: Start playback
-    println!("\nTest 5: Starting playback");
+    // Test 6: Start playback
+    println!("\nTest 6: Starting playback");
     let result = unsafe { sv_play_from_beginning(slot) };
     if result == 0 {
         println!("  ✅ Playback started");
@@ -107,8 +208,8 @@ fn main() {
         println!("  ❌ Failed to start playback: {}", result);
     }
 
-    // Test 6: Generate some audio
-    println!("\nTest 6: Generating audio (5 buffers)");
+    // Test 7: Generate some audio
+    println!("\nTest 7: Generating audio (5 buffers)");
     let buffer_size = 512;
     let mut buffer = vec![0.0f32; buffer_size * 2]; // Stereo
 
@@ -137,13 +238,13 @@ fn main() {
         thread::sleep(Duration::from_millis(10));
     }
 
-    // Test 7: Stop playback
-    println!("\nTest 7: Stopping playback");
+    // Test 8: Stop playback
+    println!("\nTest 8: Stopping playback");
     let result = unsafe { sv_stop(slot) };
     println!("  Result: {}", result);
 
-    // Test 8: Cleanup
-    println!("\nTest 8: Cleanup");
+    // Test 9: Cleanup
+    println!("\nTest 9: Cleanup");
     unsafe {
         sv_close_slot(slot);
         println!("  ✅ Slot closed");

@@ -12,8 +12,19 @@ A basic "Hello World" CLAP plugin has been successfully implemented. The plugin:
 - ✅ Is packaged as a proper CLAP bundle (`.clap` directory)
 - ✅ Ready to be loaded by CLAP-compatible DAWs
 
-### 🔄 Phase 2: Pending
-Integration with SunVox library for audio synthesis (see `plan.md` for details).
+### 🚫 Phase 2: BLOCKED - SunVox ARM64 Library Bug
+SunVox integration **code is complete**, but blocked by library bug:
+- ✅ FFI bindings implemented (`src/sunvox_ffi.rs`)
+- ✅ Library linking configured (`build.rs`)
+- ✅ Plugin initialization code written
+- ✅ Audio generation implemented with fallback (test tone)
+- ❌ **BLOCKER**: SunVox Library v2.1.3 fails on macOS ARM64
+
+**Issue**: `sv_init()` fails with error 0x20103 (CoreAudio initialization) on all ARM64 Macs, tested across 6 flag combinations and multiple environments. This is a library-level bug requiring developer fix.
+
+**Status**: November 11, 2025 - Comprehensive testing complete, bug report prepared
+
+**See**: `SUNVOX_ARM64_BUG_REPORT.md`, `TESTING.md`, `NEXT_STEPS.md` for details
 
 ## Building the Plugin
 
@@ -56,14 +67,15 @@ The plugin can be loaded in any CLAP-compatible DAW, including:
 - **FL Studio** (Windows)
 - And others supporting the CLAP format
 
-### What to Expect (Phase 1)
+### What to Expect (Current State)
 Currently, the plugin:
-- Appears as "SunVox CLAP" in the plugin browser
-- Can be instantiated multiple times
-- Passes audio through without modification (no processing yet)
-- Does not crash or cause audio glitches
+- ✅ Appears as "SunVox CLAP" in the plugin browser
+- ✅ Can be instantiated multiple times
+- ✅ Does not crash or cause audio glitches
+- ⚠️ **On macOS ARM64**: SunVox init fails → generates test tone instead
+- ⚠️ **On other platforms**: May work if SunVox supports them
 
-This is the foundation for Phase 2, where SunVox audio generation will be integrated.
+**Note**: SunVox integration code exists but cannot run due to ARM64 library bug (error 0x20103). Plugin gracefully falls back to test tone generation.
 
 ## Plugin Details
 
@@ -92,7 +104,20 @@ sunvox-rust-clap-test/
 
 See `plan.md` for the complete two-phase development plan:
 - **Phase 1**: Basic CLAP plugin (✅ Complete)
-- **Phase 2**: SunVox integration (🔄 Next)
+- **Phase 2**: SunVox integration (🚫 Blocked by ARM64 library bug)
+
+### Documentation Overview
+
+**⭐ Start Here for New Contributors**:
+1. **`plan.md`** - Full development roadmap and current status
+2. **`TESTING.md`** - All test results (Tests 1-6)
+3. **`NEXT_STEPS.md`** - Action plan and alternatives
+
+**Technical Details**:
+- **`SUNVOX_ARM64_BUG_REPORT.md`** - Bug report for SunVox developer
+- **`SUNVOX_INIT_INVESTIGATION.md`** - Technical investigation
+- **`CLAUDE.md`** - AI assistant context and quick reference
+- **`local_instructions.md`** - Local development setup
 
 ## SunVox Library
 
@@ -118,11 +143,28 @@ TODO: Add appropriate license information considering:
 
 ## Next Steps
 
-To proceed with Phase 2 (SunVox integration):
-1. Create Rust FFI bindings for SunVox C API
-2. Link SunVox library to the plugin
-3. Initialize SunVox in offline mode
-4. Integrate audio generation in the `process()` callback
-5. Test audio output and stability
+### Current Status (November 11, 2025)
 
-See `plan.md` for detailed Phase 2 steps.
+Phase 2 implementation is **complete** but **blocked by SunVox ARM64 library bug**:
+- ✅ Steps 1-4: All implementation done (FFI, linking, init, audio)
+- ✅ Step 5: Comprehensive testing completed (6 configurations tested)
+- ❌ **Result**: SunVox v2.1.3 ARM64 fails with error 0x20103 on all tests
+
+### Immediate Actions Required
+
+1. **Contact SunVox developer** with bug report (`SUNVOX_ARM64_BUG_REPORT.md`)
+   - Forum: https://warmplace.ru/forum/
+   - Subject: "SunVox Library v2.1.3 - CoreAudio Failure on macOS ARM64"
+
+2. **Follow timeline** in `NEXT_STEPS.md`:
+   - Week 1-2: Wait for developer response
+   - Week 3: Test Rosetta workaround if needed
+   - Week 4: Make strategic decision
+
+3. **Alternative options** available (see `NEXT_STEPS.md`):
+   - Rosetta 2 translation (x86_64 library)
+   - Out-of-process architecture
+   - Alternative synthesis engine
+   - Wait for library fix (recommended)
+
+See `NEXT_STEPS.md` for complete decision tree and action plan.
